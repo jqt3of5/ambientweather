@@ -10,7 +10,6 @@ function partition(data, getValue)
     {
         //If the day differs
         let currentValueDate = getValue(data[i]) //new Date(sortedData[i].lastData.date)
-        if (getValue())
         if (bucketValues[bucketValues.length -1] != currentValueDate)
         {
             bucketValues.push(currentValueDate)
@@ -30,7 +29,23 @@ function aggregate(data, init, aggregation)
     {
         acc = aggregation(data[i], acc)
     }
+    return acc
 }
+function toHtml(aggregations)
+{
+    var html = "<html>\n<body>\n"
+    html += "<table>\n"
+    html += "<tr><td>Date</td> <td><b>Average</b></td> <td><b>Max</b></td> <td><b>Min</b></td><td>Rain</td></tr>\n"
+    for(var n = 0; n < aggregations.length; ++n)
+    {
+        html += `<tr><td>${aggregations[n].date}</td> <td><b>${aggregations[n].average.toFixed(0)}</b></td> <td><b>${aggregations[n].max.toFixed(0)}</b></td> <td><b>${aggregations[n].min.toFixed(0)}</b></td><td><b>${aggregations[n].rain.toFixed(0)}</b></td></tr>\n`
+    }
+    html += "</table>\n"
+    html += "</body>\n</html>"
+
+    return html
+}
+
 exports.handler = async (event) => {
 
     var macAddress = event.macAddress
@@ -47,8 +62,9 @@ exports.handler = async (event) => {
             return a.lastData.date > b.lastData.date ? 1 : -1
         })
 
-        let valuesByDay = partition(deviceData, function(value) {
-            var date = new Date(value)
+        let valuesByDay = partition(sortedData, function(value) {
+            var date = new Date(value.lastData.date)
+            date.setHours(date.getHours() - 7)
             return date.toDateString()
         })
 
@@ -58,39 +74,36 @@ exports.handler = async (event) => {
         {
             const daysValues = valuesByDay[b]
             let average = aggregate(daysValues, 0, function(val, acc) {
-                return acc + val/daysValues.length
+                return acc + val.lastData.tempf/daysValues.length
             })
 
             let max = aggregate(daysValues, null, function(val, acc) {
-                if (acc == null || value > acc)
+                if (acc === null || val.lastData.tempf > acc)
                 {
-                    return acc
+                    return val.lastData.tempf
                 }
+                return acc
             })
 
             let min = aggregate(daysValues, null, function(val, acc) {
-                if (acc == null || value < acc)
+                if (acc === null || val.lastData.tempf < acc)
                 {
-                    return acc
+                    return val.lastData.tempf
                 }
+                return acc
             })
 
             const day = new Date(daysValues[0].lastData.date)
             const dailyRain = daysValues[daysValues.length - 1].lastData.dailyrainin
-            aggregations.push([day.toDateString(), average, max, min, dailyRain])
+            aggregations.push({date:day.toDateString(), average:average, max:max, min:min, rain:dailyRain})
         }
 
-        var html = "<html>\n<body>\n"
-        html += "<table>\n"
-        html += "<tr><td>Date</td> <td><b>Average</b></td> <td><b>Max</b></td> <td><b>Min</b></td><td>Rain</td></tr>\n"
-        for(var n = 0; n < aggregations.length; ++n)
-        {
-            html += `<tr><td>${aggregations[n][0]} <td><b>${aggregations[n][1].toFixed(0)}</b></td> <td><b>${aggregations[n][2].toFixed(0)}</b></td> <td><b>${aggregations[n][3].toFixed(0)}</b></td><td><b>${aggregations[n][4].toFixed(0)}</b></td></tr>\n`
-        }
-        html += "</table>\n"
-        html += "</body>\n</html>"
+        //if (isJson)
+        //{
+            //return aggregations
+        //}
 
-        return html;
+        return toHtml(aggregations)
     }
     catch (e)
     {
@@ -101,5 +114,4 @@ exports.handler = async (event) => {
             stack: e.stack
         }
     }
-
 };
