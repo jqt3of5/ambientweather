@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="accountSettings">
-    <option name="activeProfile" value="profile:jqt3of5" />
+    <option name="activeProfile" value="profile:default" />
     <option name="activeRegion" value="us-west-1" />
     <option name="recentlyUsedProfiles">
       <list>
-        <option value="profile:jqt3of5" />
         <option value="profile:default" />
+        <option value="profile:jqt3of5" />
       </list>
     </option>
     <option name="recentlyUsedRegions">

@@ -1,4 +1,36 @@
 const ambient = require("./AmbientWeatherAPI")
+
+function partition(data, getValue)
+{
+    let bucketValues = [getValue(data[0])]
+    let valuesByDay = [[]]
+
+    //Partition data
+    for (let i = 0; i < data.length; ++i)
+    {
+        //If the day differs
+        let currentValueDate = getValue(data[i]) //new Date(sortedData[i].lastData.date)
+        if (getValue())
+        if (bucketValues[bucketValues.length -1] != currentValueDate)
+        {
+            bucketValues.push(currentValueDate)
+            //Start next grouping
+            valuesByDay[bucketValues.length -1] = []
+        }
+
+        valuesByDay[bucketValues.length -1].push(data[i])
+    }
+
+    return valuesByDay
+}
+function aggregate(data, init, aggregation)
+{
+    var acc = init
+    for (let i = 0; i < data.length; ++i)
+    {
+        acc = aggregation(data[i], acc)
+    }
+}
 exports.handler = async (event) => {
 
     var macAddress = event.macAddress
@@ -15,60 +47,45 @@ exports.handler = async (event) => {
             return a.lastData.date > b.lastData.date ? 1 : -1
         })
 
-        let bucketValues = [new Date(sortedData[0].lastData.date)]
-        let valuesByDay = [[]]
-
-        //Partition data
-        //The date
-        for (let i = 0; i < sortedData.length; ++i)
-        {
-            //If the day differs
-            let currentValueDate = new Date(sortedData[i].lastData.date)
-            if (bucketValues[bucketValues.length -1].toDateString() != currentValueDate.toDateString())
-            {
-                bucketValues.push(currentValueDate)
-                //Start next grouping
-                valuesByDay[bucketValues.length -1] = []
-            }
-
-            valuesByDay[bucketValues.length -1].push(sortedData[i])
-        }
+        let valuesByDay = partition(deviceData, function(value) {
+            var date = new Date(value)
+            return date.toDateString()
+        })
 
         let aggregations = []
         //Aggregate the bucket
         for (let b = 0; b < valuesByDay.length; ++b)
         {
             const daysValues = valuesByDay[b]
-            let average = 0
-            let max = null
-            let min = null
+            let average = aggregate(daysValues, 0, function(val, acc) {
+                return acc + val/daysValues.length
+            })
 
-            for (let j = 0; j < daysValues.length; ++j)
-            {
-                const value = daysValues[j].lastData.tempf;
-
-                average += value / daysValues.length
-
-                if (max == null || value > max)
+            let max = aggregate(daysValues, null, function(val, acc) {
+                if (acc == null || value > acc)
                 {
-                    max = value
+                    return acc
                 }
+            })
 
-                if (min == null || value < min)
+            let min = aggregate(daysValues, null, function(val, acc) {
+                if (acc == null || value < acc)
                 {
-                    min = value
+                    return acc
                 }
-            }
+            })
+
             const day = new Date(daysValues[0].lastData.date)
-            aggregations.push([day.toDateString(), average, max, min])
+            const dailyRain = daysValues[daysValues.length - 1].lastData.dailyrainin
+            aggregations.push([day.toDateString(), average, max, min, dailyRain])
         }
 
         var html = "<html>\n<body>\n"
         html += "<table>\n"
-        html += "<tr><td>Date</td> <td><b>Average</b></td> <td><b>Max</b></td> <td><b>Min</b></td></tr>\n"
+        html += "<tr><td>Date</td> <td><b>Average</b></td> <td><b>Max</b></td> <td><b>Min</b></td><td>Rain</td></tr>\n"
         for(var n = 0; n < aggregations.length; ++n)
         {
-            html += `<tr><td>${aggregations[n][0]} <td><b>${aggregations[n][1].toFixed(2)}</b></td> <td><b>${aggregations[n][2].toFixed(2)}</b></td> <td><b>${aggregations[n][3].toFixed(2)}</b></td></tr>\n`
+            html += `<tr><td>${aggregations[n][0]} <td><b>${aggregations[n][1].toFixed(0)}</b></td> <td><b>${aggregations[n][2].toFixed(0)}</b></td> <td><b>${aggregations[n][3].toFixed(0)}</b></td><td><b>${aggregations[n][4].toFixed(0)}</b></td></tr>\n`
         }
         html += "</table>\n"
         html += "</body>\n</html>"
