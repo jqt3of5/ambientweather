@@ -2,10 +2,12 @@ const ambient = require("./AmbientWeatherAPI")
 
 exports.handler = async (event) => {
     try {
-        //Throws if the apikey used is not a valid one, causing use to not be saved
-        var devices = await ambient.getDevices(event.user.apikey)
+        //Use Proxy Integration
+        var apikey = event.queryStringParameters.apikey
+        //Throws if the apikey used is not a valid one, causing user to not be saved
+        var devices = await ambient.getDevices(apikey)
 
-        await ambient.saveUser(event.user)
+        await ambient.saveUser({apikey:apikey, email:"", name: "" })
         const response = {
             statusCode: 200,
         };
@@ -17,7 +19,7 @@ exports.handler = async (event) => {
         console.log(e)
         return {
             statusCode: 400,
-            body: e.message
+            body: JSON.stringify({error: e.message})
         }
     }
 

@@ -116,7 +116,7 @@ exports.getDevices = async function (apikey)
             response.on("end", function() {
                 resolve(JSON.parse(body))
             })
-            if (response.statusCode != 200)
+            if (response.statusCode !== 200)
             {
                 reject(new Error(body))
             }
@@ -127,7 +127,6 @@ exports.getDevices = async function (apikey)
         })
     })
 }
-
 
 exports.saveUser = async function (user)
 {
